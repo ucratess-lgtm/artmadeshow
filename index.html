@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>LUMEN Showroom</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Noto+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root {
+  --ink: #1C1A16;
+  --paper: #F4F0E8;
+  --paper2: #EDE8DC;
+  --warm: #B8955A;
+  --warm-pale: #F0E6CF;
+  --muted: #8A8277;
+  --line: rgba(28,26,22,0.12);
+  --serif: 'Cormorant Garamond', serif;
+  --sans: 'Noto Sans KR', sans-serif;
+}
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  touch-action: none;
+}
+
+/* ── 헤더 ── */
+header {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: 56px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  display: flex; align-items: center;
+  padding: 0 28px;
+  justify-content: space-between;
+  z-index: 200;
+}
+
+.logo {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+}
+.logo em { font-style: italic; color: var(--warm); }
+
+.header-right {
+  display: flex; align-items: center; gap: 20px;
+}
+
+.zone-label {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.zone-tabs {
+  display: flex; gap: 4px;
+}
+
+.zone-tab {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 100px;
+  padding: 5px 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--sans);
+}
+.zone-tab:hover { color: var(--ink); border-color: rgba(28,26,22,0.3); }
+.zone-tab.active {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+/* ── 평면도 캔버스 영역 ── */
+#map-wrap {
+  position: fixed;
+  top: 56px; left: 0; right: 0; bottom: 0;
+  overflow: hidden;
+  cursor: grab;
+}
+#map-wrap:active { cursor: grabbing; }
+
+#map-stage {
+  position: absolute;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* ── SVG 평면도 ── */
+#floorplan {
+  display: block;
+}
+
+/* 공간 영역 */
+.room-area {
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.room-area:hover .room-fill { opacity: 0.6; }
+.room-fill {
+  transition: opacity 0.2s;
+}
+
+/* ── 조명 핀 ── */
+.light-pin {
+  cursor: pointer;
+}
+
+.pin-ring-outer {
+  animation: pulseRing 2.4s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.pin-ring-inner {
+  animation: pulseRingInner 2.4s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes pulseRing {
+  0%,100% { opacity: 0; transform: scale(0.6); }
+  50% { opacity: 0.25; transform: scale(1.3); }
+}
+@keyframes pulseRingInner {
+  0%,100% { opacity: 0.15; transform: scale(0.8); }
+  50% { opacity: 0.5; transform: scale(1); }
+}
+
+.light-pin:hover .pin-dot { r: 9; }
+.pin-dot { transition: r 0.2s; }
+
+.light-pin.active .pin-dot {
+  fill: var(--warm) !important;
+}
+.light-pin.active .pin-ring-outer,
+.light-pin.active .pin-ring-inner {
+  stroke: var(--warm) !important;
+}
+
+/* ── 사이드 패널 ── */
+#panel {
+  position: fixed;
+  top: 56px; right: 0; bottom: 0;
+  width: 340px;
+  background: var(--paper);
+  border-left: 1px solid var(--line);
+  transform: translateX(100%);
+  transition: transform 0.38s cubic-bezier(0.22,1,0.36,1);
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#panel.open {
+  transform: translateX(0);
+}
+
+.panel-close {
+  position: absolute;
+  top: 16px; right: 16px;
+  width: 32px; height: 32px;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  color: var(--muted);
+  font-family: var(--sans);
+  transition: all 0.2s;
+  z-index: 10;
+}
+.panel-close:hover { background: var(--paper2); color: var(--ink); }
+
+.panel-img {
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: var(--warm-pale);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.panel-img::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, transparent 60%, var(--paper) 100%);
+  pointer-events: none;
+}
+
+.panel-lamp-svg {
+  width: 90px; height: 90px; opacity: 0.5;
+}
+
+.panel-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px 100px;
+}
+
+.panel-badge {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--warm);
+  margin-bottom: 6px;
+}
+
+.panel-brand {
+  font-family: var(--serif);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.panel-name {
+  font-family: var(--serif);
+  font-size: 28px;
+  font-weight: 300;
+  line-height: 1.2;
+  margin-bottom: 14px;
+}
+
+.panel-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.8;
+  font-weight: 300;
+  margin-bottom: 22px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
+.spec-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 24px;
+}
+
+.spec-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.spec-key { color: var(--muted); font-weight: 300; }
+.spec-val { color: var(--ink); font-weight: 400; text-align: right; }
+
+.mood-row {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-bottom: 24px;
+}
+
+.mood-pill {
+  font-size: 12px;
+  color: #7A5F2E;
+  background: var(--warm-pale);
+  border-radius: 100px;
+  padding: 4px 12px;
+}
+
+/* ── 하단 CTA ── */
+.panel-cta {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+  padding: 16px 24px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cta-price-label { font-size: 10px; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; margin-bottom: 2px; }
+.cta-price { font-family: var(--serif); font-size: 22px; font-weight: 400; }
+
+.btn-row { display: flex; gap: 8px; }
+
+.btn {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 9px 16px;
+  border-radius: 100px;
+  cursor: pointer;
+  transition: all 0.18s;
+  border: none;
+  white-space: nowrap;
+}
+
+.btn-outline {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+.btn-outline:hover { background: var(--paper2); }
+
+.btn-solid {
+  background: var(--ink);
+  color: var(--paper);
+}
+.btn-solid:hover { background: #3A3832; }
+
+/* ── 줌 컨트롤 ── */
+.zoom-ctrl {
+  position: fixed;
+  bottom: 28px; left: 28px;
+  display: flex; flex-direction: column; gap: 4px;
+  z-index: 180;
+}
+
+.zoom-btn {
+  width: 36px; height: 36px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink);
+  font-family: var(--sans);
+  transition: all 0.15s;
+}
+.zoom-btn:hover { background: var(--paper2); }
+
+/* ── 범례 ── */
+.legend {
+  position: fixed;
+  bottom: 28px;
+  left: 50%; transform: translateX(-50%);
+  display: flex; gap: 16px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 100px;
+  padding: 8px 20px;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  z-index: 180;
+  align-items: center;
+}
+
+.legend-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 5px;
+}
+
+.legend-item { display: flex; align-items: center; }
+
+/* 패널 열릴 때 지도 이동 */
+body.panel-open #map-wrap {
+  right: 340px;
+  transition: right 0.38s cubic-bezier(0.22,1,0.36,1);
+}
+</style>
+</head>
+<body>
+
+<!-- ── 헤더 ── -->
+<header>
+  <div class="logo">LUMEN <em>Showroom</em></div>
+  <div class="header-right">
+    <span class="zone-label">공간 선택</span>
+    <div class="zone-tabs" id="zoneTabs">
+      <button class="zone-tab active" data-zone="all">전체</button>
+      <button class="zone-tab" data-zone="living">거실</button>
+      <button class="zone-tab" data-zone="dining">다이닝</button>
+      <button class="zone-tab" data-zone="bedroom">침실</button>
+      <button class="zone-tab" data-zone="office">오피스</button>
+      <button class="zone-tab" data-zone="outdoor">야외</button>
+    </div>
+  </div>
+</header>
+
+<!-- ── 평면도 ── -->
+<div id="map-wrap">
+  <div id="map-stage">
+    <svg id="floorplan" width="1100" height="760" viewBox="0 0 1100 760" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+          <path d="M 24 0 L 0 0 0 24" fill="none" stroke="rgba(28,26,22,0.06)" stroke-width="0.5"/>
+        </pattern>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+
+      <!-- 격자 배경 -->
+      <rect width="1100" height="760" fill="url(#grid)"/>
+
+      <!-- 외벽 -->
+      <rect x="40" y="40" width="1020" height="680" rx="4"
+        fill="none" stroke="#1C1A16" stroke-width="2.5"/>
+
+      <!-- ── 공간 구획 ── -->
+
+      <!-- 거실 (좌상) -->
+      <g class="room-area" data-zone="living">
+        <rect class="room-fill" x="41" y="41" width="390" height="340" fill="#E8E0CC" opacity="0.4" rx="2"/>
+        <text x="60" y="68" font-family="'Cormorant Garamond',serif" font-size="11" fill="#8A8277" letter-spacing="0.1em">LIVING ROOM</text>
+        <!-- 가구 실루엣 -->
+        <rect x="60" y="220" width="160" height="80" rx="4" fill="none" stroke="#1C1A16" stroke-width="0.5" opacity="0.2"/>
+        <rect x="80" y="310" width="200" height="45" rx="4" fill="none" stroke="#1C1A16" stroke-width="0.5" opacity="0.2"/>
+        <rect x="60" y="80" width="110" height="70" rx="3" fill="none" stroke="#1C1A16" stroke-width="0.5" opacity="0.15"/>
+      </g>
+
+      <!-- 다이닝 (우상) -->
+      <g class="room-area" data-zone="dining">
+        <rect class="room-fill" x="431" y="41" width="350" height="280" fill="#DDD5BE" opacity="0.4" rx="2"/>
+        <text x="450" y="68" font-family="'Cormorant Garamond',serif" font-size="11" fill="#8A8277" letter-spacing="0.1em">DINING</text>
+        <!-- 테이블 -->
+        <ellipse cx="605" cy="175" rx="90" ry="55" fill="none" stroke="#1C1A16" stroke-width="0.5" opacity="0.2"/>
+        <circle cx="605" cy="105" r="12" fill="none" stroke="#1C1A16" stroke-width="0.5" opacity="0.15"/>
+        <circle cx="605" cy="245" r="12" fill="none" stroke="#1C1A16" stroke-width="0.5" opacity="0.15"/>
+        <circle cx="530" cy="175" r="12" fill="none" stroke="#1C1A16" stroke-width="0.5" opacity="0.15"/>
+        <circle cx="680" cy="175" r="12" fill="none" stroke="#1C1A16" stroke-width="0.5" opacity="0.15"/>
+      </g>
+
+      <!-- 주방 (우상 끝) -->
+      <g class="room-area" data-zone="kitchen">
+        <rect class="room-fill" x="781" y="41" width="279" height="280" fill="#E2DAC6" opacity="0.4" rx="2"/>
+        <text x="800" y="68" font-family="'Cormorant Garamond',serif" font-size="11" fill="#8A8277" letter-spacing="0.1em">KITCHEN</text>
+        <rect x="800" y="80" width="240" height="40" rx="3" fill="none" stroke="#1C1A16" stroke-width="0.5" opacity="0.2"/>
+        <rect x="1000" y="120" width="40" height="160" rx="3" fill="none" stroke="#1C1A16" stroke-width="0.5" opacity="0.2"/>
+      </g>
+
+      <!-- 침실 (좌하) -->
+      <g class="room-area" data-zone="bedroom">
+        <rect class="room-fill" x="41" y="381" width="390" height="338" fill="#D8D0BC" opacity="0.4" rx="2"/>
+        <text x="60" y="408" font-family="'Cormorant Garamond',serif" font-size="11" fill="#8A8277" letter-spacing="0.1em">BEDROOM</text>
+        <!-- 침대 -->
+        <rect x="100" y="500" width="200" height="140" rx="6" fill="none" stroke="#1C1A16" stroke-width="0.5" opacity="0.25"/>
+        <rect x="100" y="500" width="200" height="36" rx="4" fill="none" stroke="#1C1A16" stroke-width="0.5" opacity="0.18"/>
+      </g>
+
+      <!-- 오피스 (중하) -->
+      <g class="room-area" data-zone="office">
+        <rect class="room-fill" x="431" y="321" width="350" height="398" fill="#DDD6C2" opacity="0.4" rx="2"/>
+        <text x="450" y="348" font-family="'Cormorant Garamond',serif" font-size="11" fill="#8A8277" letter-spacing="0.1em">HOME OFFICE</text>
+        <rect x="470" y="420" width="260" height="100" rx="4" fill="none" stroke="#1C1A16" stroke-width="0.5" opacity="0.2"/>
+        <rect x="480" y="560" width="100" height="120" rx="4" fill="none" stroke="#1C1A16" stroke-width="0.5" opacity="0.15"/>
+      </g>
+
+      <!-- 야외 (우하) -->
+      <g class="room-area" data-zone="outdoor">
+        <rect class="room-fill" x="781" y="321" width="279" height="398" fill="#E6DFCB" opacity="0.4" rx="2"/>
+        <text x="800" y="348" font-family="'Cormorant Garamond',serif" font-size="11" fill="#8A8277" letter-spacing="0.1em">OUTDOOR TERRACE</text>
+        <circle cx="900" cy="490" r="50" fill="none" stroke="#1C1A16" stroke-width="0.5" stroke-dasharray="4,4" opacity="0.2"/>
+        <rect x="840" y="600" width="60" height="80" rx="3" fill="none" stroke="#1C1A16" stroke-width="0.5" opacity="0.15"/>
+        <rect x="920" y="600" width="60" height="80" rx="3" fill="none" stroke="#1C1A16" stroke-width="0.5" opacity="0.15"/>
+      </g>
+
+      <!-- ── 구획선 ── -->
+      <!-- 수직 -->
+      <line x1="431" y1="41" x2="431" y2="719" stroke="#1C1A16" stroke-width="1.5"/>
+      <line x1="781" y1="41" x2="781" y2="719" stroke="#1C1A16" stroke-width="1.5"/>
+      <!-- 수평 -->
+      <line x1="41" y1="381" x2="431" y2="381" stroke="#1C1A16" stroke-width="1.5"/>
+      <line x1="431" y1="321" x2="1059" y2="321" stroke="#1C1A16" stroke-width="1.5"/>
+      <line x1="431" y1="381" x2="431" y2="381" stroke="#1C1A16" stroke-width="1.5"/>
+      <!-- 거실↔다이닝 수평 -->
+      <line x1="431" y1="321" x2="431" y2="321" stroke="#1C1A16" stroke-width="1.5"/>
+
+      <!-- ── 조명 핀들 ── -->
+      <!-- 거실 001 -->
+      <g class="light-pin" data-id="001" data-zone="living" transform="translate(200,180)">
+        <circle class="pin-ring-outer" r="22" fill="none" stroke="#1C1A16" stroke-width="1"/>
+        <circle class="pin-ring-inner" r="14" fill="none" stroke="#1C1A16" stroke-width="1"/>
+        <circle class="pin-dot" r="7" fill="#1C1A16"/>
+        <text y="28" text-anchor="middle" font-family="'Noto Sans KR',sans-serif" font-size="9" fill="#8A8277" letter-spacing="0.06em">ARCO</text>
+      </g>
+
+      <!-- 거실 002 -->
+      <g class="light-pin" data-id="002" data-zone="living" transform="translate(330,140)">
+        <circle class="pin-ring-outer" r="22" fill="none" stroke="#1C1A16" stroke-width="1" style="animation-delay:0.4s"/>
+        <circle class="pin-ring-inner" r="14" fill="none" stroke="#1C1A16" stroke-width="1" style="animation-delay:0.4s"/>
+        <circle class="pin-dot" r="7" fill="#1C1A16"/>
+        <text y="28" text-anchor="middle" font-family="'Noto Sans KR',sans-serif" font-size="9" fill="#8A8277" letter-spacing="0.06em">PH5</text>
+      </g>
+
+      <!-- 다이닝 003 -->
+      <g class="light-pin" data-id="003" data-zone="dining" transform="translate(605,155)">
+        <circle class="pin-ring-outer" r="22" fill="none" stroke="#1C1A16" stroke-width="1" style="animation-delay:0.8s"/>
+        <circle class="pin-ring-inner" r="14" fill="none" stroke="#1C1A16" stroke-width="1" style="animation-delay:0.8s"/>
+        <circle class="pin-dot" r="7" fill="#1C1A16"/>
+        <text y="28" text-anchor="middle" font-family="'Noto Sans KR',sans-serif" font-size="9" fill="#8A8277" letter-spacing="0.06em">BELL</text>
+      </g>
+
+      <!-- 주방 004 -->
+      <g class="light-pin" data-id="004" data-zone="kitchen" transform="translate(900,170)">
+        <circle class="pin-ring-outer" r="22" fill="none" stroke="#1C1A16" stroke-width="1" style="animation-delay:1.1s"/>
+        <circle class="pin-ring-inner" r="14" fill="none" stroke="#1C1A16" stroke-width="1" style="animation-delay:1.1s"/>
+        <circle class="pin-dot" r="7" fill="#1C1A16"/>
+        <text y="28" text-anchor="middle" font-family="'Noto Sans KR',sans-serif" font-size="9" fill="#8A8277" letter-spacing="0.06em">BEAT</text>
+      </g>
+
+      <!-- 침실 005 -->
+      <g class="light-pin" data-id="005" data-zone="bedroom" transform="translate(200,470)">
+        <circle class="pin-ring-outer" r="22" fill="none" stroke="#1C1A16" stroke-width="1" style="animation-delay:0.6s"/>
+        <circle class="pin-ring-inner" r="14" fill="none" stroke="#1C1A16" stroke-width="1" style="animation-delay:0.6s"/>
+        <circle class="pin-dot" r="7" fill="#1C1A16"/>
+        <text y="28" text-anchor="middle" font-family="'Noto Sans KR',sans-serif" font-size="9" fill="#8A8277" letter-spacing="0.06em">BL9</text>
+      </g>
+
+      <!-- 오피스 006 -->
+      <g class="light-pin" data-id="006" data-zone="office" transform="translate(600,440)">
+        <circle class="pin-ring-outer" r="22" fill="none" stroke="#1C1A16" stroke-width="1" style="animation-delay:0.9s"/>
+        <circle class="pin-ring-inner" r="14" fill="none" stroke="#1C1A16" stroke-width="1" style="animation-delay:0.9s"/>
+        <circle class="pin-dot" r="7" fill="#1C1A16"/>
+        <text y="28" text-anchor="middle" font-family="'Noto Sans KR',sans-serif" font-size="9" fill="#8A8277" letter-spacing="0.06em">TOLOMEO</text>
+      </g>
+
+      <!-- 야외 007 -->
+      <g class="light-pin" data-id="007" data-zone="outdoor" transform="translate(900,450)">
+        <circle class="pin-ring-outer" r="22" fill="none" stroke="#1C1A16" stroke-width="1" style="animation-delay:1.3s"/>
+        <circle class="pin-ring-inner" r="14" fill="none" stroke="#1C1A16" stroke-width="1" style="animation-delay:1.3s"/>
+        <circle class="pin-dot" r="7" fill="#1C1A16"/>
+        <text y="28" text-anchor="middle" font-family="'Noto Sans KR',sans-serif" font-size="9" fill="#8A8277" letter-spacing="0.06em">НАБОР</text>
+      </g>
+
+      <!-- 나침반 -->
+      <g transform="translate(1040,710)">
+        <circle r="16" fill="var(--paper)" stroke="rgba(28,26,22,0.15)" stroke-width="1"/>
+        <text text-anchor="middle" y="-4" font-size="8" font-family="'Cormorant Garamond',serif" fill="#8A8277">N</text>
+        <line x1="0" y1="-10" x2="0" y2="2" stroke="#1C1A16" stroke-width="1"/>
+        <polygon points="0,-10 -3,0 3,0" fill="#1C1A16"/>
+      </g>
+
+      <!-- 스케일 -->
+      <g transform="translate(60,730)">
+        <line x1="0" y1="0" x2="60" y2="0" stroke="#8A8277" stroke-width="1"/>
+        <line x1="0" y1="-4" x2="0" y2="4" stroke="#8A8277" stroke-width="1"/>
+        <line x1="60" y1="-4" x2="60" y2="4" stroke="#8A8277" stroke-width="1"/>
+        <text x="30" y="-6" text-anchor="middle" font-size="9" font-family="'Noto Sans KR',sans-serif" fill="#8A8277">5m</text>
+      </g>
+    </svg>
+  </div>
+</div>
+
+<!-- ── 사이드 패널 ── -->
+<div id="panel">
+  <button class="panel-close" onclick="closePanel()">✕</button>
+  <div class="panel-img" id="panelImg">
+    <svg class="panel-lamp-svg" viewBox="0 0 90 90" fill="none">
+      <circle cx="45" cy="32" r="20" stroke="#B8955A" stroke-width="1.5" fill="none"/>
+      <line x1="45" y1="4" x2="45" y2="12" stroke="#B8955A" stroke-width="1.5"/>
+      <path d="M28 46 Q45 64 62 46" stroke="#B8955A" stroke-width="1.5" fill="none"/>
+      <line x1="45" y1="64" x2="45" y2="86" stroke="#B8955A" stroke-width="1.5"/>
+      <circle cx="45" cy="32" r="6" fill="#B8955A" opacity="0.35"/>
+    </svg>
+  </div>
+  <div class="panel-scroll" id="panelScroll"></div>
+  <div class="panel-cta" id="panelCta"></div>
+</div>
+
+<!-- ── 줌 컨트롤 ── -->
+<div class="zoom-ctrl">
+  <button class="zoom-btn" onclick="zoom(1.2)">＋</button>
+  <button class="zoom-btn" onclick="zoom(0.83)">－</button>
+</div>
+
+<!-- ── 범례 ── -->
+<div class="legend">
+  <div class="legend-item"><span class="legend-dot" style="background:#1C1A16"></span>조명 위치</div>
+  <div style="width:1px;height:12px;background:rgba(28,26,22,0.15)"></div>
+  <div class="legend-item" style="color:#B8955A">● 선택됨</div>
+  <div style="width:1px;height:12px;background:rgba(28,26,22,0.15)"></div>
+  <div class="legend-item">핀 클릭 시 상세정보</div>
+</div>
+
+<script>
+// ── 조명 데이터 ──
+const LIGHTS = {
+  "001": {
+    brand:"FLOS", name:"Arco Floor Lamp", badge:"BEST SELLER",
+    zone:"living", zoneKr:"거실",
+    desc:"1962년 카스틸리오니 형제가 설계한 아이코닉한 플로어 램프. 무거운 대리석 베이스와 2.5m 아치형 스틸 암이 공간 어디서도 빛을 닿게 합니다.",
+    kelvin:"2700K", watt:"150W", material:"스틸 · 대리석", size:"H 250cm",
+    price:"₩ 3,200,000",
+    moods:["럭셔리","클래식","거실","아치형"]
+  },
+  "002": {
+    brand:"Louis Poulsen", name:"PH 5 Pendant", badge:"NEW",
+    zone:"living", zoneKr:"거실",
+    desc:"폴 헤닝센의 3단 셰이드 시스템. 눈부심 없는 균일한 빛과 자연스러운 컬러 보정으로 공간에 온기를 더합니다.",
+    kelvin:"2700K", watt:"100W", material:"알루미늄", size:"Ø 50cm",
+    price:"₩ 1,850,000",
+    moods:["스칸디나비안","모던","펜던트"]
+  },
+  "003": {
+    brand:"Muuto", name:"Under The Bell", badge:null,
+    zone:"dining", zoneKr:"다이닝",
+    desc:"파인 울 소재의 셰이드가 빛을 부드럽게 산란시켜 식탁 위에 따뜻하고 포근한 분위기를 연출합니다.",
+    kelvin:"3000K", watt:"60W", material:"파인 울 · 알루미늄", size:"Ø 68cm",
+    price:"₩ 980,000",
+    moods:["미니멀","북유럽","다이닝"]
+  },
+  "004": {
+    brand:"Tom Dixon", name:"Beat Light Tall", badge:"SALE",
+    zone:"kitchen", zoneKr:"주방",
+    desc:"인도 장인의 수공예 핸드스펀 스틸. 불규칙한 표면이 빛을 독특하게 반사해 주방에 생동감 있는 패턴을 만듭니다.",
+    kelvin:"2200K", watt:"40W", material:"핸드스펀 스틸", size:"H 42cm",
+    price:"₩ 680,000",
+    moods:["인더스트리얼","주방","수공예"]
+  },
+  "005": {
+    brand:"Gubi", name:"BL9 Wall Lamp", badge:null,
+    zone:"bedroom", zoneKr:"침실",
+    desc:"오팔 유리 셰이드가 균일하고 부드러운 확산광을 만들어 침실 벽면에 아늑한 빛을 더합니다.",
+    kelvin:"2700K", watt:"25W", material:"오팔 유리 · 브라스", size:"H 22cm",
+    price:"₩ 540,000",
+    moods:["클래식","침실","월등"]
+  },
+  "006": {
+    brand:"Artemide", name:"Tolomeo Mega", badge:"NEW",
+    zone:"office", zoneKr:"홈오피스",
+    desc:"정밀한 조인트 시스템으로 빛 방향을 자유롭게 조절. 작업 집중도를 높이는 이탈리아 디자인 명작.",
+    kelvin:"3000K", watt:"100W", material:"알루미늄", size:"H 165cm",
+    price:"₩ 1,240,000",
+    moods:["모던","홈오피스","집중","플로어"]
+  },
+  "007": {
+    brand:"Vibia", name:"Flamenca Outdoor", badge:null,
+    zone:"outdoor", zoneKr:"야외 테라스",
+    desc:"방수 IP65 등급의 야외 전용 조명. 스페인 바르셀로나 디자인 스튜디오가 제작한 유려한 형태.",
+    kelvin:"3000K", watt:"28W", material:"알루미늄 (IP65)", size:"H 180cm",
+    price:"₩ 1,560,000",
+    moods:["야외","방수","테라스","모던"]
+  }
+};
+
+// ── 패널 열기 ──
+let activePin = null;
+
+document.querySelectorAll('.light-pin').forEach(pin => {
+  pin.addEventListener('click', e => {
+    e.stopPropagation();
+    const id = pin.dataset.id;
+    if (activePin) activePin.classList.remove('active');
+    pin.classList.add('active');
+    activePin = pin;
+    openPanel(id);
+  });
+});
+
+function openPanel(id) {
+  const l = LIGHTS[id];
+  if (!l) return;
+
+  const scroll = document.getElementById('panelScroll');
+  const cta = document.getElementById('panelCta');
+
+  scroll.innerHTML = `
+    ${l.badge ? `<div class="panel-badge">${l.badge}</div>` : ''}
+    <div class="panel-brand">${l.brand} · ${l.zoneKr}</div>
+    <h2 class="panel-name">${l.name}</h2>
+    <p class="panel-desc">${l.desc}</p>
+    <div class="spec-list">
+      <div class="spec-row"><span class="spec-key">색온도</span><span class="spec-val">${l.kelvin}</span></div>
+      <div class="spec-row"><span class="spec-key">소비전력</span><span class="spec-val">${l.watt}</span></div>
+      <div class="spec-row"><span class="spec-key">소재</span><span class="spec-val">${l.material}</span></div>
+      <div class="spec-row"><span class="spec-key">크기</span><span class="spec-val">${l.size}</span></div>
+    </div>
+    <div class="mood-row">
+      ${l.moods.map(m => `<span class="mood-pill">${m}</span>`).join('')}
+    </div>
+  `;
+
+  cta.innerHTML = `
+    <div>
+      <div class="cta-price-label">판매가</div>
+      <div class="cta-price">${l.price}</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="alert('카카오채널 연결')">카카오 문의</button>
+      <button class="btn btn-solid" onclick="alert('전화: 02-1234-5678')">전화 상담</button>
+    </div>
+  `;
+
+  document.getElementById('panel').classList.add('open');
+  document.body.classList.add('panel-open');
+}
+
+function closePanel() {
+  document.getElementById('panel').classList.remove('open');
+  document.body.classList.remove('panel-open');
+  if (activePin) { activePin.classList.remove('active'); activePin = null; }
+}
+
+// 배경 클릭 시 패널 닫기
+document.getElementById('map-wrap').addEventListener('click', e => {
+  if (!e.target.closest('.light-pin')) closePanel();
+});
+
+// ── 존 필터 ──
+document.querySelectorAll('.zone-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.zone-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const zone = tab.dataset.zone;
+
+    document.querySelectorAll('.light-pin').forEach(pin => {
+      const show = zone === 'all' || pin.dataset.zone === zone;
+      pin.style.opacity = show ? '1' : '0.15';
+      pin.style.pointerEvents = show ? 'auto' : 'none';
+    });
+
+    document.querySelectorAll('.room-area').forEach(area => {
+      const highlight = zone === 'all' || area.dataset.zone === zone;
+      area.querySelector('.room-fill').style.opacity = highlight ? '0.4' : '0.12';
+    });
+  });
+});
+
+// ── 팬 & 줌 ──
+const stage = document.getElementById('map-stage');
+const wrap  = document.getElementById('map-wrap');
+
+let scale = 1, tx = 0, ty = 0;
+let dragging = false, lastX = 0, lastY = 0;
+
+function applyTransform() {
+  stage.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+}
+
+// 초기 위치: 중앙 정렬
+function initPos() {
+  const ww = wrap.offsetWidth, wh = wrap.offsetHeight;
+  scale = Math.min(ww / 1100, wh / 760) * 0.88;
+  tx = (ww - 1100 * scale) / 2;
+  ty = (wh - 760 * scale) / 2;
+  applyTransform();
+}
+initPos();
+
+wrap.addEventListener('pointerdown', e => {
+  if (e.target.closest('.light-pin')) return;
+  dragging = true;
+  lastX = e.clientX; lastY = e.clientY;
+  wrap.setPointerCapture(e.pointerId);
+});
+
+wrap.addEventListener('pointermove', e => {
+  if (!dragging) return;
+  tx += e.clientX - lastX;
+  ty += e.clientY - lastY;
+  lastX = e.clientX; lastY = e.clientY;
+  applyTransform();
+});
+
+wrap.addEventListener('pointerup', () => { dragging = false; });
+
+wrap.addEventListener('wheel', e => {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? 0.88 : 1.14;
+  const rect = wrap.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  tx = mx - (mx - tx) * delta;
+  ty = my - (my - ty) * delta;
+  scale *= delta;
+  applyTransform();
+}, { passive: false });
+
+// 핀치 줌 (터치)
+let touches = [], initDist = 0, initScale = 1;
+
+wrap.addEventListener('touchstart', e => {
+  touches = [...e.touches];
+  if (touches.length === 2) {
+    initDist = Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+    initScale = scale;
+  }
+}, { passive: true });
+
+wrap.addEventListener('touchmove', e => {
+  if (e.touches.length === 2) {
+    const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    scale = Math.min(Math.max(initScale * dist / initDist, 0.3), 3);
+    applyTransform();
+  }
+}, { passive: true });
+
+function zoom(delta) {
+  const cx = wrap.offsetWidth / 2, cy = wrap.offsetHeight / 2;
+  tx = cx - (cx - tx) * delta;
+  ty = cy - (cy - ty) * delta;
+  scale *= delta;
+  applyTransform();
+}
+
+window.addEventListener('resize', initPos);
+</script>
+</body>
+</html>
